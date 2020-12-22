@@ -1,5 +1,7 @@
 package com.example.breakingnewsappguardianapi
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -24,19 +26,18 @@ import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
 
-    var pageSize = 10
+    private val adapter = RecyclerAdapter()
+    private var pageSize = 10
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val vmp by lazy { ViewModelProvider(this, ViewModelFactory(Repository())).get(ViewModel::class.java) }
 
         rvview.layoutManager = LinearLayoutManager(this)
-        val adapter = RecyclerAdapter()
         readDataVM(getSPrefs())
 
+
         var isScrolling = false
-        var isLoading = false
-        var isLastPage = false
 
         val sclis = object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
@@ -53,11 +54,10 @@ class MainActivity : AppCompatActivity() {
                 val visibleItems = lm.childCount
                 val allItems = lm.itemCount
 
-                val nlnp = !isLoading && !isLastPage
                 val atLastItem = itemVisible + visibleItems >= allItems
                 val notatBgn = itemVisible >= 0
                 val totalmore = allItems >= 10
-                val shouldPaginate = nlnp && atLastItem && notatBgn && totalmore && isScrolling
+                val shouldPaginate = atLastItem && notatBgn && totalmore && isScrolling
                 if (shouldPaginate) {
                     pageSize += 10
                     readDataVM(getSPrefs())
@@ -81,6 +81,14 @@ class MainActivity : AppCompatActivity() {
     fun readDataVM(category: Int){
         pbar.visibility = View.VISIBLE
         val vmp by lazy { ViewModelProviders.of(this, ViewModelFactory(Repository())).get(ViewModel::class.java) }
+
+        adapter.submitData(emptyList())
+        val internet = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (internet.activeNetworkInfo == null)
+        {
+            Toast.makeText(this, "No Internet Accessed!", Toast.LENGTH_LONG).show()
+        }
+
         if (category < 1 || category > 11) vmp.readData(pageSize)
         else vmp.readDataCategory(CONSTS.categoryItems[category].replace("\\s".toRegex(), ""), pageSize)
     }
@@ -99,7 +107,7 @@ class MainActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun BuildAD(){
+    fun BuildAD(){
         var selectedItem : Int = getSPrefs()
         val dialog = AlertDialog.Builder(this)
         dialog.apply {
